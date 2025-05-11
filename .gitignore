@@ -1,0 +1,22 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Uploaded videos
+uploads/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+
+# Large data files (optional, uncomment if needed)
+# results/

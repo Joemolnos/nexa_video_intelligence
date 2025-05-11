@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Videó Pszichometriai Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Papa Parse (CSV parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Annotations plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- AOS (Animate On Scroll) -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header Section -->
+        <header class="mb-12 text-center" data-aos="fade-down">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gradient">Videó Pszichometriai Elemzés</h1>
+            <p class="text-xl text-gray-300">Részletes pszichológiai és vizuális elemzési eredmények</p>
+            
+            <!-- Új fájlfeltöltő szekció -->
+            <div class="mt-8 p-4 bg-gray-800 rounded-lg shadow-xl neon-border">
+                <div id="uploadSection" class="flex flex-wrap items-center justify-center gap-4">
+                    <div class="relative">
+                        <input type="file" id="videoFileInput" accept="video/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                        <button class="px-6 py-3 sci-fi-button glow-pulse relative">
+                            <span class="flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                Videó feltöltése
+                            </span>
+                        </button>
+                    </div>
+                    <button id="analyzeBtn" class="px-6 py-3 sci-fi-button glow-pulse bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Elemzés indítása
+                        </span>
+                    </button>
+                </div>
+                
+                <!-- Feltöltött fájl információk -->
+                <div id="uploadInfo" class="mt-4 hidden">
+                    <div class="flex items-center justify-center">
+                        <div class="bg-gray-700 rounded-lg p-3 flex items-center">
+                            <svg class="w-8 h-8 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div>
+                                <p class="font-semibold" id="uploadedFileName">video.mp4</p>
+                                <p class="text-xs text-gray-400" id="uploadedFileSize">0 MB</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Elemzés folyamatjelző -->
+                <div id="analysisProgress" class="mt-4 hidden">
+                    <div class="relative pt-1">
+                        <div class="flex mb-2 items-center justify-between">
+                            <div>
+                                <span id="progressStatus" class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-indigo-600 bg-indigo-200">
+                                    Elemzés előkészítése...
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <span id="progressPercent" class="text-xs font-semibold inline-block text-indigo-600">
+                                    0%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200">
+                            <div id="progressBar" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500 w-0 transition-all duration-300"></div>
+                        </div>
+                    </div>
+                    <p id="progressMessage" class="text-sm text-gray-400 text-center">Az elemzés folyamatban...</p>
+                </div>
+                
+                <div id="errorMessage" class="text-red-500 font-semibold hidden"></div>
+            </div>
+            
+            <div class="mt-8 p-4 bg-gray-800 rounded-lg shadow-xl neon-border">
+                <div class="flex flex-wrap items-center justify-center gap-4">
+                    <button id="loadDataBtn" class="px-6 py-3 sci-fi-button glow-pulse">
+                        <span class="flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                            </svg>
+                            Korábbi elemzés betöltése
+                        </span>
+                    </button>
+                </div>
+                <div class="stats-container hidden flex-wrap justify-center gap-4 mt-4" id="statsQuickview">
+                    <!-- Gyors statisztikák itt fognak megjelenni -->
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main Dashboard -->
+        <main class="dashboard-container opacity-0 transition-opacity duration-1000">
+            <!-- Idősor Diagram Szekció -->
+            <section class="dashboard-section mb-12" data-aos="fade-up">
+                <h2 class="text-2xl font-bold mb-6 section-title">Videó Idősor Elemzés</h2>
+                <div class="timeline-container dashboard-panel">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Érzelmi és Kognitív Mutatók Időbeli Változása</h3>
+                        <button class="explanation-btn" data-target="timeline-explanation">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="chart-container" style="height: 350px;">
+                        <canvas id="timelineChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-400 text-center">
+                        <p class="mb-2 text-base">A grafikon a videó teljes hosszában mutatja a főbb pszichológiai mutatók változását</p>
+                        <div class="flex flex-wrap justify-center gap-4 mt-2">
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-pink-500 mr-2"></span> <strong>Öröm:</strong> A néző által átélt pozitív érzelmek szintje</span>
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-orange-500 mr-2"></span> <strong>Stressz:</strong> A feszültség és nyugtalanság mértéke</span>
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-teal-500 mr-2"></span> <strong>Unalom:</strong> Az érdeklődés hiányának szintje</span>
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-purple-500 mr-2"></span> <strong>Elkötelezettség:</strong> A figyelem és bevonódás mértéke</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Érzelmi Állapot Szekció -->
+            <section class="dashboard-section mb-12" data-aos="fade-up" data-aos-delay="100">
+                <h2 class="text-2xl font-bold mb-6 section-title">Érzelmi Állapot</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Radar Chart: Érzelmi Állapot -->
+                    <div class="p-6 dashboard-panel">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Pszichológiai Profilkép</h3>
+                            <button class="explanation-btn" data-target="emotional-radar-explanation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="emotionalRadarChart"></canvas>
+                        </div>
+                        <p class="text-center mt-4 text-gray-400">A videó által kiváltott érzelmi állapotok összesített profilja. Minél távolabb van egy pont a középponttól, annál erősebb az adott érzelmi dimenzió.</p>
+                    </div>
+                    
+                    <!-- Gauge Charts: Alapvető Érzelmek -->
+                    <div class="p-6 dashboard-panel">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Alapvető Érzelmek</h3>
+                            <button class="explanation-btn" data-target="basic-emotions-explanation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="gauge-container">
+                                <canvas id="pleasureGauge"></canvas>
+                                <p class="text-center mt-2 font-semibold">Öröm</p>
+                                <p class="text-center text-xs text-gray-400">A videó által kiváltott pozitív érzelmek</p>
+                            </div>
+                            <div class="gauge-container">
+                                <canvas id="arousalGauge"></canvas>
+                                <p class="text-center mt-2 font-semibold">Éberség</p>
+                                <p class="text-center text-xs text-gray-400">A figyelem és aktivitás szintje</p>
+                            </div>
+                            <div class="gauge-container">
+                                <canvas id="dominanceGauge"></canvas>
+                                <p class="text-center mt-2 font-semibold">Dominancia</p>
+                                <p class="text-center text-xs text-gray-400">A kontroll és befolyás érzete</p>
+                            </div>
+                            <div class="gauge-container">
+                                <canvas id="engagementGauge"></canvas>
+                                <p class="text-center mt-2 font-semibold">Elkötelezettség</p>
+                                <p class="text-center text-xs text-gray-400">A tartalom iránti érdeklődés mértéke</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Kognitív Terhelés és Feszültség -->
+            <section class="dashboard-section mb-12" data-aos="fade-up" data-aos-delay="150">
+                <h2 class="text-2xl font-bold mb-6 section-title">Kognitív és Feszültségi Mutatók</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Kognitív Terhelés -->
+                    <div class="p-6 dashboard-panel">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Kognitív Terhelés</h3>
+                            <button class="explanation-btn" data-target="cognitive-load-explanation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="chart-container relative">
+                            <canvas id="cognitiveLoadChart"></canvas>
+                            <div id="cognitiveLoadValue" class="absolute inset-0 flex items-center justify-center text-4xl font-bold text-gradient"></div>
+                        </div>
+                        <p class="text-center mt-4 text-gray-400">A tartalom által kiváltott gondolkodási erőfeszítés mértéke. Magasabb érték nagyobb mentális igénybevételt jelent.</p>
+                    </div>
+                    
+                    <!-- Stressz Szint -->
+                    <div class="p-6 dashboard-panel">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Stressz Szint</h3>
+                            <button class="explanation-btn" data-target="stress-level-explanation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="chart-container relative">
+                            <canvas id="stressLevelChart"></canvas>
+                            <div id="stressLevelValue" class="absolute inset-0 flex items-center justify-center text-4xl font-bold text-gradient"></div>
+                        </div>
+                        <p class="text-center mt-4 text-gray-400">A tartalom által kiváltott feszültség mértéke. Alacsonyabb érték nyugodtabb befogadói élményt jelez.</p>
+                    </div>
+                    
+                    <!-- Unalom vs Érdeklődés -->
+                    <div class="p-6 dashboard-panel">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Unalom vs Érdeklődés</h3>
+                            <button class="explanation-btn" data-target="boredom-explanation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="boredomChart"></canvas>
+                        </div>
+                        <p class="text-center mt-4 text-gray-400">Az unalom és érdeklődés aránya a tartalom során. A nagyobb zöld terület magasabb érdeklődést jelez.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Vizuális és Audio Elemzés -->
+            <section class="dashboard-section mb-12" data-aos="fade-up" data-aos-delay="200">
+                <h2 class="text-2xl font-bold mb-6 section-title">Audiovizuális Stimuláció</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Vizuális Stimuláció -->
+                    <div class="p-6 dashboard-panel">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Vizuális Stimuláció</h3>
+                            <button class="explanation-btn" data-target="visual-stimulation-explanation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="visualChart"></canvas>
+                        </div>
+                        <div class="mt-4 text-sm text-gray-400">
+                            <p class="mb-2 text-center">A videó vizuális jellemzőinek erőssége:</p>
+                            <ul class="space-y-1 pl-4">
+                                <li><strong>Intenzitás:</strong> A képi elemek erőssége és élénksége</li>
+                                <li><strong>Mozgás:</strong> A képernyőn látható mozgás mennyisége</li>
+                                <li><strong>Kontraszt:</strong> A világos és sötét területek közötti különbség</li>
+                                <li><strong>Dinamika:</strong> A képi változások sebessége és mértéke</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Audio Stimuláció -->
+                    <div class="p-6 dashboard-panel">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold">Audio Stimuláció</h3>
+                            <button class="explanation-btn" data-target="audio-stimulation-explanation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="audioChart"></canvas>
+                        </div>
+                        <div class="mt-4 text-sm text-gray-400">
+                            <p class="mb-2 text-center">A videó hangi jellemzőinek erőssége:</p>
+                            <ul class="space-y-1 pl-4">
+                                <li><strong>Hangerő:</strong> A hang átlagos erőssége</li>
+                                <li><strong>Energia:</strong> A hang dinamikája és intenzitása</li>
+                                <li><strong>Hangmagasság:</strong> A magas és mély hangok aránya</li>
+                                <li><strong>Tempó:</strong> A zene vagy beszéd sebessége</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Színpszichológia Szekció -->
+            <section class="dashboard-section" data-aos="fade-up" data-aos-delay="250">
+                <h2 class="text-2xl font-bold mb-6 section-title">Színpszichológiai Elemzés</h2>
+                <div class="p-6 dashboard-panel">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Színek Pszichológiai Hatása</h3>
+                        <button class="explanation-btn" data-target="color-psychology-explanation">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="color-psychology-metric" id="colorArousalContainer">
+                            <h3 class="text-lg font-semibold mb-2">Színek Éberségi Hatása</h3>
+                            <div class="color-intensity-bar">
+                                <div class="color-value-indicator" id="colorArousalIndicator"></div>
+                            </div>
+                            <p class="text-sm mt-2 text-gray-400">A színek által kiváltott éberségi szint. A magasabb érték stimulálóbb színvilágot jelez.</p>
+                        </div>
+                        
+                        <div class="color-psychology-metric" id="colorValenceContainer">
+                            <h3 class="text-lg font-semibold mb-2">Színek Érzelmi Értéke</h3>
+                            <div class="color-intensity-bar">
+                                <div class="color-value-indicator" id="colorValenceIndicator"></div>
+                            </div>
+                            <p class="text-sm mt-2 text-gray-400">A színek által kiváltott érzelmi hatás. A magasabb érték pozitívabb érzelmi hatást jelez.</p>
+                        </div>
+                        
+                        <div class="color-psychology-metric" id="colorDominanceContainer">
+                            <h3 class="text-lg font-semibold mb-2">Színek Dominanciája</h3>
+                            <div class="color-intensity-bar">
+                                <div class="color-value-indicator" id="colorDominanceIndicator"></div>
+                            </div>
+                            <p class="text-sm mt-2 text-gray-400">A színek dominancia-érzetet kiváltó hatása. A magasabb érték erőteljesebb vizuális hatást jelez.</p>
+                        </div>
+                        
+                        <div class="color-psychology-metric" id="colorHarmonyContainer">
+                            <h3 class="text-lg font-semibold mb-2">Színharmónia</h3>
+                            <div class="color-intensity-bar">
+                                <div class="color-value-indicator" id="colorHarmonyIndicator"></div>
+                            </div>
+                            <p class="text-sm mt-2 text-gray-400">A színkombinációk harmonikus hatása. A magasabb érték kellemesebb, harmonikusabb színvilágot jelez.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Pszichológiai Mutatók Grafikon -->
+            <section class="dashboard-section" data-aos="fade-up">
+                <h2 class="text-2xl font-bold mb-6 section-title">Pszichológiai Hatás Elemzése</h2>
+                <div class="p-6 dashboard-panel">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Pszichológiai Mutatók Változása</h3>
+                        <button class="explanation-btn" data-target="psych-metrics-explanation">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="psychChart"></canvas>
+                    </div>
+                    <div class="mt-4 text-sm text-gray-400 text-center">
+                        <p class="mb-2 text-base">A grafikon a videó teljes hosszában mutatja a főbb pszichológiai mutatók változását</p>
+                        <div class="flex flex-wrap justify-center gap-4 mt-2">
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-pink-500 mr-2"></span> <strong>Öröm:</strong> A néző által átélt pozitív érzelmek szintje</span>
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-orange-500 mr-2"></span> <strong>Stressz:</strong> A feszültség és nyugtalanság mértéke</span>
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-teal-500 mr-2"></span> <strong>Unalom:</strong> Az érdeklődés hiányának szintje</span>
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-purple-500 mr-2"></span> <strong>Elkötelezettség:</strong> A figyelem és bevonódás mértéke</span>
+                            <span class="flex items-center"><span class="inline-block w-4 h-4 rounded-full bg-yellow-500 mr-2"></span> <strong>Narratív Feszültség:</strong> A történeti feszültség dinamikája</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Flow állapot és narratív struktúra elemzés konténer -->
+                    <div id="flowStateAnalysis"></div>
+                    
+                    <!-- Tudományos értelmezés konténer -->
+                    <div id="psychInterpretations"></div>
+                    
+                    <!-- Tudományos háttér magyarázat -->
+                    <div class="mt-6 p-4 border border-gray-700 rounded-lg bg-gray-800 text-sm">
+                        <h4 class="font-medium mb-2 text-lg">Fejlett Pszichológiai Modell</h4>
+                        <p class="mb-2">Az elemzés a következő tudományos modellekre épül, figyelembe véve a pszichológiai állapotok közötti komplex interakciókat:</p>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li><strong>Optimális Arousal modell:</strong> Az éberség és öröm szintje között nem lineáris, fordított U alakú összefüggés van - a túl alacsony és túl magas stimuláció egyaránt csökkenti az élményt</li>
+                            <li><strong>Flow állapot modell:</strong> Optimális élmény akkor jön létre, amikor a kognitív kihívás és a néző képességei egyensúlyban vannak</li>
+                            <li><strong>PAD modell (Pleasure-Arousal-Dominance):</strong> Az érzelmi állapotokat három alapvető dimenzió mentén értelmezi</li>
+                            <li><strong>Narratív feszültség modell:</strong> A történeti ívet és a feszültség-feloldás dinamikát elemzi</li>
+                            <li><strong>Figyelem-elosztási modell:</strong> A nézői figyelmi kapacitás korlátos erőforrásként való kezelése</li>
+                        </ul>
+                        <p class="mt-2">A rendszer fejlett algoritmusokat használ, amelyek figyelembe veszik az ingerek közötti kölcsönhatásokat és az optimális stimulációs szinteket, valamint a narratív struktúra időbeli kibontakozását.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Információs Panel -->
+        <div id="infoPanel" class="fixed bottom-6 right-6 max-w-md p-6 dashboard-panel opacity-0 transform translate-y-20 transition-all duration-500 ease-out z-50">
+            <h3 class="text-xl font-bold mb-3 text-gradient">Elemzési Információk</h3>
+            <p class="text-gray-300 mb-4">Ez a dashboard a videóelemzés során generált pszichometriai adatokat jeleníti meg, amelyek a <code>video_analysis_summary.csv</code> fájlból származnak.</p>
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div class="p-2 bg-gray-700 rounded-lg neon-border">
+                    <p class="text-sm font-semibold">Érzelmi Paraméterek</p>
+                    <p class="text-xs text-gray-400">A videó által kiváltott érzelmi állapotok</p>
+                </div>
+                <div class="p-2 bg-gray-700 rounded-lg neon-border">
+                    <p class="text-sm font-semibold">Kognitív Hatások</p>
+                    <p class="text-xs text-gray-400">Gondolkodásra és figyelemre gyakorolt hatások</p>
+                </div>
+                <div class="p-2 bg-gray-700 rounded-lg neon-border">
+                    <p class="text-sm font-semibold">Vizuális Jellemzők</p>
+                    <p class="text-xs text-gray-400">A mozgás, intenzitás és kontraszt hatásai</p>
+                </div>
+                <div class="p-2 bg-gray-700 rounded-lg neon-border">
+                    <p class="text-sm font-semibold">Audio Jellemzők</p>
+                    <p class="text-xs text-gray-400">A hang és zene pszichológiai hatásai</p>
+                </div>
+            </div>
+            <button id="closeInfoBtn" class="w-full py-2 sci-fi-button">Bezárás</button>
+        </div>
+        
+        <!-- Info Button -->
+        <button id="infoBtn" class="fixed bottom-6 right-6 p-3 sci-fi-button rounded-full shadow-lg transition-colors z-50 glow">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </button>
+        
+        <!-- Magyarázat overlay és panel -->
+        <div id="explanationOverlay" class="overlay"></div>
+        <div id="explanationPanel" class="explanation-panel">
+            <button class="close-explanation" id="closeExplanationBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                </svg>
+            </button>
+            <h3 id="explanationTitle" class="text-gradient">Mutató magyarázata</h3>
+            <div id="explanationContent" class="explanation-content">
+                <!-- A magyarázat tartalma dinamikusan töltődik be -->
+            </div>
+            <div class="explanation-footer">
+                A pszichometriai elemzés segít megérteni a videó nézői élményének mélyebb aspektusait.
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Scripts -->
+    <script src="dashboard.js"></script>
+</body>
+</html>
